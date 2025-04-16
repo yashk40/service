@@ -1,40 +1,39 @@
-// 🧠 Use system-installed Chrome for Puppeteer
-process.env.PUPPETEER_EXECUTABLE_PATH = '/usr/bin/google-chrome-stable';
-
 const express = require("express");
 const puppeteer = require("puppeteer");
 const fs = require("fs");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 app.use(express.json());
 app.use(express.static("public"));
 
-// 📥 Load proxies from file
+// Load proxies from proxies.txt
 const proxyList = fs.readFileSync("proxies.txt", "utf-8")
   .split("\n")
   .map(p => p.trim())
   .filter(Boolean);
 
-// ⏱️ Helper delay function
+// Helper function to wait between requests
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// 🌐 Visit URL using Puppeteer through a proxy
+// Visit URL with a specific proxy
 async function visitWithProxy(url, proxy) {
   try {
     console.log(`🔄 Trying proxy: ${proxy}`);
 
+    // Launch browser with the correct executable path for cloud environments like Render
     const browser = await puppeteer.launch({
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-      headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser', // Adjust path as needed
       args: [
-        `--proxy-server=${proxy}`,
         '--no-sandbox',
         '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage', // Fix for limited memory environments
+        '--headless', // Run in headless mode
       ],
+      headless: true, 
     });
 
     const page = await browser.newPage();
@@ -46,7 +45,7 @@ async function visitWithProxy(url, proxy) {
     await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
     console.log(`✅ Visited: ${url} via ${proxy}`);
 
-    await page.waitForTimeout(10000); // simulate user watching for 10 seconds
+    await page.waitForTimeout(10000); // Simulate user viewing the page
     await browser.close();
 
     return { success: true, proxy };
@@ -56,28 +55,25 @@ async function visitWithProxy(url, proxy) {
   }
 }
 
-// 🚀 Bot endpoint
+// POST endpoint to start the bot
 app.post("/start", async (req, res) => {
   const { url } = req.body;
-  if (!url) {
-    console.log("❌ No URL provided in request.");
-    return res.status(400).json({ error: "Missing video URL." });
-  }
+  if (!url) return res.status(400).json({ error: "Missing video URL." });
 
-  console.log(`📡 Starting bot for URL: ${url}`);
   const results = [];
 
   for (const proxy of proxyList) {
     const result = await visitWithProxy(url, proxy);
     results.push(result);
-    await delay(5000); // wait 5 seconds between each
+
+    await delay(5000); // Wait 5 seconds before next visit
   }
 
-  console.log("✅ Bot run completed.");
   res.json({ message: "Bot completed", results });
 });
 
-// 🟢 Start the server
+// Start the server
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running at http://localhost:${PORT}`);
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
+
