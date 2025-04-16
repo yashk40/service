@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Video Bot with Proxies</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background: #f5f5f5;
+    }
+    h2 {
+      margin-bottom: 1rem;
+    }
+    input, textarea, button {
+      width: 100%;
+      margin: 0.5rem 0;
+      padding: 0.75rem;
+      font-size: 1rem;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #output {
+      margin-top: 1rem;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h2>🔁 Video Bot Using Proxy List</h2>
+  <input type="text" id="videoUrl" placeholder="Enter video URL" />
+  <button onclick="startBot()">Start Bot</button>
+  <div id="output"></div>
+
+  <script>
+    async function startBot() {
+      const url = document.getElementById("videoUrl").value;
+      const output = document.getElementById("output");
+      output.innerText = "⏳ Starting bot...";
+
+      const response = await fetch("/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      const data = await response.json();
+
+      if (data.message) {
+        output.innerText = data.message; // Show "Bot completed"
+      }
+
+      // Display detailed results
+      if (data.results) {
+        data.results.forEach(result => {
+          const resultText = result.success 
+            ? `✅ Success with ${result.proxy}`
+            : `❌ Failed with ${result.proxy}: ${result.error}`;
+          output.innerText += "\n" + resultText;
+        });
+      }
+    }
+  </script>
+</body>
+</html>
